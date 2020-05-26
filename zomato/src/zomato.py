@@ -273,10 +273,10 @@ def get_all_review(driver, limit):
         return reviews,total_reviews
 
 
-def data_write(data):
+def data_write(data,username,start,end):
     try:
         json_data = json.dumps(data, ensure_ascii=False)
-        f = open('data.json', 'w')
+        f = open('{0}_data_{1}_{2}.json'.format(username,start,end), 'w')
         f.write(json_data)
         f.close()
     except Exception as e:
@@ -295,11 +295,13 @@ def main():
     limit = 100000
     print('Starting to scrap zomato info at - {0}\n'.format(datetime.datetime.now()))
     print('Available range of urls is from : 0 to {0}\n'.format(len(urls)))
+
+    username = input('Please input your name : this is just for file tracking :  ')
     start = int(input('Enter starting index : '))
     end = int(input('Enter ending index : '))
     data = fetch_zomato_info(urls[start:end], path, limit)
     print('scraping process Ended {0}'.format(datetime.datetime.now()))
-    data_write(data)
+    data_write(data,username,start,end)
 
 
 if __name__ == '__main__':
