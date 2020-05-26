@@ -1,0 +1,5 @@
+# Dependencies required : if anything missed please add the same in this file.
+
+tqdm
+selenium
+beautifulsoup4
