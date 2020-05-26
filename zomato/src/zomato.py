@@ -179,8 +179,9 @@ def fetch_zomato_info(url_list, chromeDriver_path, limit):
             # get Photos count with type
             photos = {}
             try:
-                photo_button = driver.find_element_by_link_text(
-                    'Photos').click()
+                WebDriverWait(driver,5).until(EC.presence_of_element_located((By.LINK_TEXT,'Photos'))).click()
+                # photo_button = driver.find_element_by_link_text(
+                #     'Photos').click()
                 photos_element = WebDriverWait(driver, 5).until(EC.presence_of_all_elements_located(
                     (By.XPATH, '//*[@id="root"]/main/div/section[4]/div/div[1]/div/button/span/span')))
 
@@ -227,10 +228,10 @@ def get_all_review(driver, limit):
     reviews = list()
     try:
         reviews_button = driver.find_element_by_link_text('Reviews').click()
-        total_reviews  = WebDriverWait(driver,5).until(EC.presence_of_element_located((By.XPATH,'//*[@id="root"]/main/div/section[4]/div/div/section[2]/div[1]/div[1]/div/div/div/span/p'))).text
-
-        if total_reviews:
-            total_reviews  = int(total_reviews.split('(')[1][:-1])
+        total_reviews_text  = WebDriverWait(driver,5).until(EC.presence_of_element_located((By.XPATH,'//*[@id="root"]/main/div/section[4]/div/div/section[2]/div[1]/div[1]/div/div/div/span/p'))).text
+        total_reviews = 0
+        if len(total_reviews_text) >0:
+            total_reviews  = int(total_reviews_text.split('(')[1][:-1])
             limit = total_reviews
         else:
             total_reviews = 0
@@ -292,8 +293,11 @@ def main():
     path = os.path.abspath("../../driver/chromedriver")
     #define some limit if reviwes count not available
     limit = 100000
-    print('Starting to scrap zomato info {0}'.format(datetime.datetime.now()))
-    data = fetch_zomato_info(urls[1000:1001], path, limit)
+    print('Starting to scrap zomato info at - {0}\n'.format(datetime.datetime.now()))
+    print('Available range of urls is from : 0 to {0}\n'.format(len(urls)))
+    start = int(input('Enter starting index : '))
+    end = int(input('Enter ending index : '))
+    data = fetch_zomato_info(urls[start:end], path, limit)
     print('scraping process Ended {0}'.format(datetime.datetime.now()))
     data_write(data)
 
