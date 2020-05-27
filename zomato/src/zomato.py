@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 import datetime
 import json
 import os
+from selenium.common.exceptions import NoSuchElementException
 
 
 def fetch_all_urls(filename):
@@ -115,8 +116,7 @@ def fetch_zomato_info(url_list, chromeDriver_path, limit):
             # Address
             address = ""
             try:
-                address = driver.find_element_by_xpath(
-                    '//*[@id="root"]/main/div/section[4]/section/article/section/p').text
+                address = WebDriverWait(driver,5).until(EC.presence_of_element_located((By.XPATH,'//*[@id="root"]/main/div/section[4]/section/article/section/p'))).text
             except Exception as e:
                 print(e)
                 address = ""
@@ -187,13 +187,14 @@ def fetch_zomato_info(url_list, chromeDriver_path, limit):
 
                 for p in photos_element:
                     photos[p.text.split(' ')[0]] = p.text.split(' ')[1][1:-1]
-            except Exception as e:
-                print("Error in getting photos details")
+            except NoSuchElementException as e:
+                print("Photos element missing")
                 pass
 
             # Get all reviews
             # print('Starting to scrap Reviews...')
             reviews = list()
+            total_review_count = 0
             try:
                 reviews,total_review_count = get_all_review(driver, limit)
             except Exception as e:
@@ -226,10 +227,10 @@ def fetch_zomato_info(url_list, chromeDriver_path, limit):
 
 def get_all_review(driver, limit):
     reviews = list()
+    total_reviews = 0
     try:
         reviews_button = driver.find_element_by_link_text('Reviews').click()
         total_reviews_text  = WebDriverWait(driver,5).until(EC.presence_of_element_located((By.XPATH,'//*[@id="root"]/main/div/section[4]/div/div/section[2]/div[1]/div[1]/div/div/div/span/p'))).text
-        total_reviews = 0
         if len(total_reviews_text) >0:
             total_reviews  = int(total_reviews_text.split('(')[1][:-1])
             limit = total_reviews
@@ -247,7 +248,7 @@ def get_all_review(driver, limit):
         except Exception as e:
             print(e)
 
-        json_response = WebDriverWait(driver, 10).until(
+        json_response = WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.XPATH, '/html/body/pre'))).text
 
         data = json.loads(json_response)
