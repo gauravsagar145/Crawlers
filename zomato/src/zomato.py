@@ -6,10 +6,12 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from tqdm import tqdm
 from bs4 import BeautifulSoup
-import datetime,time
+import datetime
+import time
 import json
 import os
 from selenium.common.exceptions import NoSuchElementException
+
 
 def fetch_all_urls(filename):
     file = open(filename, "rb")
@@ -54,7 +56,7 @@ def get_driver(path):
     options.add_argument(
         "user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.113 Safari/537.36")
 
-    driver = webdriver.Chrome(executable_path = path, options=options)
+    driver = webdriver.Chrome(executable_path=path, options=options)
 
     return driver
 
@@ -69,7 +71,8 @@ def fetch_zomato_info(url_list, chromeDriver_path, limit):
         # get Restaurants name
         name = ""
         try:
-            name = driver.find_element_by_xpath('https://www.zomato.com/ncr/filmi-masala-mg-road-gurgaon/reviews').text
+            name = driver.find_element_by_xpath(
+                'https://www.zomato.com/ncr/filmi-masala-mg-road-gurgaon/reviews').text
             # name = WebDriverWait(driver, 2).until(EC.presence_of_element_located(
             #     (By.XPATH, '//*[@id="root"]/main/div/section[3]/section/section[1]/h1'))).text
             # print(name)
@@ -81,14 +84,16 @@ def fetch_zomato_info(url_list, chromeDriver_path, limit):
         try:
             # status = WebDriverWait(driver, 10).until(EC.presence_of_element_located(
             #     (By.XPATH, '//*[@id="root"]/main/div/section[3]/section/section[1]/section[2]/span[1]'))).text
-            status = driver.find_element_by_xpath('//*[@id="root"]/main/div/section[3]/section/section[1]/section[2]/span[1]').text
+            status = driver.find_element_by_xpath(
+                '//*[@id="root"]/main/div/section[3]/section/section[1]/section[2]/span[1]').text
         except Exception as e:
             pass
 
         # Get latitude and longitude
         direction = {}
         try:
-            dir = driver.find_element_by_xpath('//*[@id="root"]/main/div/section[3]/div[1]/section/a').get_attribute('href').split('=')
+            dir = driver.find_element_by_xpath(
+                '//*[@id="root"]/main/div/section[3]/div[1]/section/a').get_attribute('href').split('=')
             # dir = WebDriverWait(driver, 10).until(EC.presence_of_element_located(
             #     (By.XPATH, '//*[@id="root"]/main/div/section[3]/div[1]/section/a'))).get_attribute('href').split('=')
             direction["latitude"] = dir[-1].split(',')[0]
@@ -100,7 +105,8 @@ def fetch_zomato_info(url_list, chromeDriver_path, limit):
         try:
             # contacts = WebDriverWait(driver, 10).until(EC.presence_of_all_elements_located(
             #     (By.XPATH, '//*[@id="root"]/main/div/section[4]/section/article/p[text()]')))
-            contacts = driver.find_elements_by_xpath('//*[@id="root"]/main/div/section[4]/section/article/p[text()]')
+            contacts = driver.find_elements_by_xpath(
+                '//*[@id="root"]/main/div/section[4]/section/article/p[text()]')
             for i in range(len(contacts)):
                 all_contacts["Phone No. {0}".format(
                     i+1)] = contacts[i].text
@@ -109,7 +115,8 @@ def fetch_zomato_info(url_list, chromeDriver_path, limit):
         # Address
         address = ""
         try:
-            address = driver.find_element_by_xpath('//*[@id="root"]/main/div/section[4]/section/article/section/p').text
+            address = driver.find_element_by_xpath(
+                '//*[@id="root"]/main/div/section[4]/section/article/section/p').text
             # address = WebDriverWait(driver, 2).until(EC.presence_of_element_located(
             #     (By.XPATH, '//*[@id="root"]/main/div/section[4]/section/article/section/p'))).text
         except Exception as e:
@@ -117,9 +124,10 @@ def fetch_zomato_info(url_list, chromeDriver_path, limit):
             pass
 
         # Get Online Order Status
-        oo_status =""
+        oo_status = ""
         try:
-            online_order_button = driver.find_element_by_link_text('Order Online').text
+            online_order_button = driver.find_element_by_link_text(
+                'Order Online').text
             # online_order_button = WebDriverWait(driver,2).until(EC.presence_of_element_located((By.LINK_TEXT,'Order Online'))).text
             if online_order_button:
                 oo_status = 'Yes'
@@ -131,7 +139,8 @@ def fetch_zomato_info(url_list, chromeDriver_path, limit):
         # check table booking status
         book_table = ""
         try:
-            table_booking_button = driver.find_element_by_link_text('Book a Table').text
+            table_booking_button = driver.find_element_by_link_text(
+                'Book a Table').text
             # table_booking_button = WebDriverWait(driver,2).until(EC.presence_of_element_located((By.LINK_TEXT,'Book a Table'))).text
             if table_booking_button:
                 book_table = 'Yes'
@@ -155,14 +164,16 @@ def fetch_zomato_info(url_list, chromeDriver_path, limit):
         try:
             try:
                 dining = 0.0
-                dining = driver.find_element_by_xpath('//*[@id="root"]/main/div/section[3]/section/section[2]/section[1]/div[1]/p').text
+                dining = driver.find_element_by_xpath(
+                    '//*[@id="root"]/main/div/section[3]/section/section[2]/section[1]/div[1]/p').text
                 # dining = WebDriverWait(driver, 1).until(EC.presence_of_element_located(
                 #     (By.XPATH, '//*[@id="root"]/main/div/section[3]/section/section[2]/section[1]/div[1]/p'))).text
             except:
                 pass
             try:
                 delivery = 0.0
-                delivery =  driver.find_element_by_xpath('//*[@id="root"]/main/div/section[3]/section/section[2]/section[2]/div[1]/p').text
+                delivery = driver.find_element_by_xpath(
+                    '//*[@id="root"]/main/div/section[3]/section/section[2]/section[2]/div[1]/p').text
                 # delivery = WebDriverWait(driver, 1).until(EC.presence_of_element_located(
                 #     (By.XPATH, '//*[@id="root"]/main/div/section[3]/section/section[2]/section[2]/div[1]/p'))).text
             except:
@@ -241,7 +252,7 @@ def get_all_review(driver, limit):
         ps = str(driver.page_source)
         res_id = ps[ps.find('res_id')+9:].split(',')[0]
         try:
-            if(limit ==0):
+            if(limit == 0):
                 limit = 1
             api = "https://www.zomato.com/webroutes/reviews/loadMore?res_id={0}&limit={1}".format(
                 res_id, limit)
@@ -303,12 +314,12 @@ def main():
     print('Available range of urls is from : 0 to {0}\n'.format(len(urls)))
 
     username = input(
-        'Please input your name : this is just for file tracking :  ')
+        'Please enter the file name :  ')
     start = int(input('Enter starting index : '))
     end = int(input('Enter ending index : '))
     data = fetch_zomato_info(urls[start:end], path, limit)
     print('scraping process Ended {0}'.format(datetime.datetime.now()))
-    
+
     data_write(data, username, start, end)
 
 
