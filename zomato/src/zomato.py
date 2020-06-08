@@ -6,11 +6,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from tqdm import tqdm
 from bs4 import BeautifulSoup
-import datetime
+import datetime,time
 import json
 import os
 from selenium.common.exceptions import NoSuchElementException
-
 
 def fetch_all_urls(filename):
     file = open(filename, "rb")
@@ -55,200 +54,203 @@ def get_driver(path):
     options.add_argument(
         "user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.113 Safari/537.36")
 
-    driver = webdriver.Chrome(executable_path=path, options=options)
+    driver = webdriver.Chrome(executable_path = path, options=options)
 
     return driver
 
 
 def fetch_zomato_info(url_list, chromeDriver_path, limit):
-    try:
-        output = list()
-        driver = get_driver(chromeDriver_path)
+    driver = get_driver(chromeDriver_path)
+    driver.delete_all_cookies()
+    output = list()
+    for url in tqdm(url_list):
+        temp = {}
+        driver.get(url)
+        # get Restaurants name
+        name = ""
+        try:
+            name = driver.find_element_by_xpath('https://www.zomato.com/ncr/filmi-masala-mg-road-gurgaon/reviews').text
+            # name = WebDriverWait(driver, 2).until(EC.presence_of_element_located(
+            #     (By.XPATH, '//*[@id="root"]/main/div/section[3]/section/section[1]/h1'))).text
+            # print(name)
+        except Exception as e:
+            name = "N/A"
+            pass
+        # Status
+        status = ""
+        try:
+            # status = WebDriverWait(driver, 10).until(EC.presence_of_element_located(
+            #     (By.XPATH, '//*[@id="root"]/main/div/section[3]/section/section[1]/section[2]/span[1]'))).text
+            status = driver.find_element_by_xpath('//*[@id="root"]/main/div/section[3]/section/section[1]/section[2]/span[1]').text
+        except Exception as e:
+            pass
 
-        for url in tqdm(url_list):
-            temp = {}
-            driver.get(url)
-
-            # get Restaurants name
-            try:
-                name = WebDriverWait(driver, 5).until(EC.presence_of_element_located(
-                    (By.XPATH, '//*[@id="root"]/main/div/section[3]/section/section[1]/h1'))).text
-                # print(name)
-            except Exception as e:
-                name = "N/A"
-                print(e)
-
-            # Status
-            status = ""
-            try:
-                status = WebDriverWait(driver, 10).until(EC.presence_of_element_located(
-                    (By.XPATH, '//*[@id="root"]/main/div/section[3]/section/section[1]/section[2]/span[1]'))).text
-            except Exception as e:
-                print(e)
-                pass
-
-            # Get latitude and longitude
-            direction = {}
-            try:
-                dir = WebDriverWait(driver, 4).until(EC.presence_of_element_located(
-                    (By.XPATH, '//*[@id="root"]/main/div/section[3]/div[1]/section/a'))).get_attribute('href').split('=')
-                # driver.find_element_by_xpath(
-                #     '//*[@id="root"]/main/div/section[3]/div[1]/section/a').get_attribute('href').split('=')
-
-                direction["latitude"] = dir[-1].split(',')[0]
-                direction["longitude"] = dir[-1].split(',')[1]
-            except Exception as e:
-                print(e)
-                pass
-
-            # Contact Details
-            all_contacts = {}
-            try:
-                contacts = driver.find_elements_by_xpath(
-                    '//*[@id="root"]/main/div/section[4]/section/article/p[text()]')
-                for i in range(len(contacts)):
-                    all_contacts["Phone No. {0}".format(
-                        i+1)] = contacts[i].text
-            except Exception as e:
-                print("No contact found")
-                print(e)
-
-            # Address
+        # Get latitude and longitude
+        direction = {}
+        try:
+            dir = driver.find_element_by_xpath('//*[@id="root"]/main/div/section[3]/div[1]/section/a').get_attribute('href').split('=')
+            # dir = WebDriverWait(driver, 10).until(EC.presence_of_element_located(
+            #     (By.XPATH, '//*[@id="root"]/main/div/section[3]/div[1]/section/a'))).get_attribute('href').split('=')
+            direction["latitude"] = dir[-1].split(',')[0]
+            direction["longitude"] = dir[-1].split(',')[1]
+        except Exception as e:
+            pass
+        # Contact Details
+        all_contacts = {}
+        try:
+            # contacts = WebDriverWait(driver, 10).until(EC.presence_of_all_elements_located(
+            #     (By.XPATH, '//*[@id="root"]/main/div/section[4]/section/article/p[text()]')))
+            contacts = driver.find_elements_by_xpath('//*[@id="root"]/main/div/section[4]/section/article/p[text()]')
+            for i in range(len(contacts)):
+                all_contacts["Phone No. {0}".format(
+                    i+1)] = contacts[i].text
+        except Exception as e:
+            pass
+        # Address
+        address = ""
+        try:
+            address = driver.find_element_by_xpath('//*[@id="root"]/main/div/section[4]/section/article/section/p').text
+            # address = WebDriverWait(driver, 2).until(EC.presence_of_element_located(
+            #     (By.XPATH, '//*[@id="root"]/main/div/section[4]/section/article/section/p'))).text
+        except Exception as e:
             address = ""
-            try:
-                address = WebDriverWait(driver,5).until(EC.presence_of_element_located((By.XPATH,'//*[@id="root"]/main/div/section[4]/section/article/section/p'))).text
-            except Exception as e:
-                print(e)
-                address = ""
-                pass
+            pass
 
-            # Get Online Order Status
-            try:
-                online_order_button = driver.find_element_by_link_text(
-                    'Order Online').text
-                if online_order_button:
-                    oo_status = 'Yes'
-                else:
-                    oo_status = 'No'
-            except:
+        # Get Online Order Status
+        oo_status =""
+        try:
+            online_order_button = driver.find_element_by_link_text('Order Online').text
+            # online_order_button = WebDriverWait(driver,2).until(EC.presence_of_element_located((By.LINK_TEXT,'Order Online'))).text
+            if online_order_button:
+                oo_status = 'Yes'
+            else:
                 oo_status = 'No'
+        except:
+            oo_status = 'No'
 
-            # check table booking status
-            try:
-                table_booking_button = driver.find_element_by_link_text(
-                    'Book a Table').text
-                if table_booking_button:
-                    book_table = 'Yes'
-                else:
-                    book_table = 'No'
-            except:
+        # check table booking status
+        book_table = ""
+        try:
+            table_booking_button = driver.find_element_by_link_text('Book a Table').text
+            # table_booking_button = WebDriverWait(driver,2).until(EC.presence_of_element_located((By.LINK_TEXT,'Book a Table'))).text
+            if table_booking_button:
+                book_table = 'Yes'
+            else:
                 book_table = 'No'
+        except:
+            book_table = 'No'
 
-            # cuisines
-            all_cuisines = list()
+        # cuisines
+        all_cuisines = list()
+        try:
+            cuisines_element = WebDriverWait(driver, 2).until(EC.presence_of_all_elements_located(
+                (By.XPATH, '//*[@id="root"]/main/div/section[3]/section/section[1]/section[1]/div/a')))
+            for cuisine in cuisines_element:
+                all_cuisines.append(cuisine.text)
+        except Exception as e:
+            pass
+
+        # Ratings Updated according to latest UI
+        ratings = {}
+        try:
             try:
-                cuisines_element = driver.find_elements_by_xpath(
-                    '//*[@id="root"]/main/div/section[3]/section/section[1]/section[1]/div/a')
-                for cuisine in cuisines_element:
-                    all_cuisines.append(cuisine.text)
-            except Exception as e:
-                print(e)
+                dining = 0.0
+                dining = driver.find_element_by_xpath('//*[@id="root"]/main/div/section[3]/section/section[2]/section[1]/div[1]/p').text
+                # dining = WebDriverWait(driver, 1).until(EC.presence_of_element_located(
+                #     (By.XPATH, '//*[@id="root"]/main/div/section[3]/section/section[2]/section[1]/div[1]/p'))).text
+            except:
                 pass
-
-            # Ratings Updated according to latest UI
-            ratings = {}
             try:
-                try:
-                    dining = 0.0
-                    dining = driver.find_element_by_xpath(
-                        '//*[@id="root"]/main/div/section[3]/section/section[2]/section[1]/div[1]/p').text
-                except:
-                    pass
-                try:
-                    delivery = 0.0
-                    delivery = driver.find_element_by_xpath(
-                        '//*[@id="root"]/main/div/section[3]/section/section[2]/section[2]/div[1]/p').text
-                except:
-                    pass
-
-                ratings['Dining'] = dining
-                ratings['Delivery'] = delivery
+                delivery = 0.0
+                delivery =  driver.find_element_by_xpath('//*[@id="root"]/main/div/section[3]/section/section[2]/section[2]/div[1]/p').text
+                # delivery = WebDriverWait(driver, 1).until(EC.presence_of_element_located(
+                #     (By.XPATH, '//*[@id="root"]/main/div/section[3]/section/section[2]/section[2]/div[1]/p'))).text
             except:
                 pass
 
-            # get Photos count with type
-            photos = {}
-            try:
-                WebDriverWait(driver,5).until(EC.presence_of_element_located((By.LINK_TEXT,'Photos'))).click()
-                # photo_button = driver.find_element_by_link_text(
-                #     'Photos').click()
-                photos_element = WebDriverWait(driver, 5).until(EC.presence_of_all_elements_located(
-                    (By.XPATH, '//*[@id="root"]/main/div/section[4]/div/div[1]/div/button/span/span')))
+            ratings['Dining'] = dining
+            ratings['Delivery'] = delivery
+        except:
+            pass
 
-                for p in photos_element:
-                    photos[p.text.split(' ')[0]] = p.text.split(' ')[1][1:-1]
-            except NoSuchElementException as e:
-                print("Photos element missing")
-                pass
+        # get Photos count with type
+        photos = {}
+        try:
+            bt = driver.find_element_by_link_text('Photos')
+            # bt = WebDriverWait(driver, 1).until(
+            #     EC.presence_of_element_located((By.LINK_TEXT, 'Photos')))
+            bt.click()
 
-            # Get all reviews
-            # print('Starting to scrap Reviews...')
-            reviews = list()
-            total_review_count = 0
-            try:
-                reviews,total_review_count = get_all_review(driver, limit)
-            except Exception as e:
-                print(e)
-                pass
+            photos_element = WebDriverWait(driver, 5).until(EC.presence_of_all_elements_located(
+                (By.XPATH, '//*[@id="root"]/main/div/section[4]/div/div[1]/div/button/span/span')))
 
-            temp['Name'] = name
-            temp["URL"] = url
-            temp['Current Status'] = status
-            temp["Direction"] = direction
-            temp['Contacts'] = all_contacts
-            temp['Address'] = address
-            temp['Online Order Accepts'] = oo_status
-            temp['Table Booking Available'] = book_table
-            temp['All Cuisines'] = all_cuisines
-            temp['Photos'] = photos
-            temp['Total Votes/Reviews'] = total_review_count
-            temp['Rating'] = ratings
-            temp['Reviews'] = reviews
+            for p in photos_element:
+                photos[p.text.split(' ')[0]] = p.text.split(' ')[
+                    1][1:-1]
+        except Exception as e:
+            pass
 
-            output.append(temp)
+        # Get all reviews
+        reviews = list()
+        total_review_count = 0
+        try:
+            time.sleep(0.5)
+            reviews, total_review_count = get_all_review(driver, limit)
+        except Exception as e:
+            pass
 
-    except Exception as e:
-        print(e)
-        pass
-    finally:
-        driver.quit()
-        return output
+        temp['Name'] = name
+        temp["URL"] = url
+        temp['Current Status'] = status
+        temp["Direction"] = direction
+        temp['Contacts'] = all_contacts
+        temp['Address'] = address
+        temp['Online Order Accepts'] = oo_status
+        temp['Table Booking Available'] = book_table
+        temp['All Cuisines'] = all_cuisines
+        temp['Photos'] = photos
+        temp['Total Votes/Reviews'] = total_review_count
+        temp['Rating'] = ratings
+        temp['Reviews'] = reviews
+
+        output.append(temp)
+
+        # try:
+        #     driver.quit()
+        # except:
+        #     pass
+
+    return output
 
 
 def get_all_review(driver, limit):
     reviews = list()
     total_reviews = 0
     try:
-        reviews_button = driver.find_element_by_link_text('Reviews').click()
-        total_reviews_text  = WebDriverWait(driver,5).until(EC.presence_of_element_located((By.XPATH,'//*[@id="root"]/main/div/section[4]/div/div/section[2]/div[1]/div[1]/div/div/div/span/p'))).text
-        if len(total_reviews_text) >0:
-            total_reviews  = int(total_reviews_text.split('(')[1][:-1])
+        reviews_button = WebDriverWait(driver, 5).until(
+            EC.presence_of_element_located((By.LINK_TEXT, 'Reviews')))
+        reviews_button.click()
+        total_reviews_text = WebDriverWait(driver, 2).until(EC.presence_of_element_located(
+            (By.XPATH, '//*[@id="root"]/main/div/section[4]/div/div/section[2]/div[1]/div[1]/div/div/div/span/p'))).text
+        if len(total_reviews_text) > 0:
+            total_reviews = int(total_reviews_text.split('(')[1][:-1])
             limit = total_reviews
         else:
             total_reviews = 0
-        
+
         ps = str(driver.page_source)
-        ps = ps[ps.find('res_id')+9:]
-        res_id = ps.split(',')[0]
-        # print(res_id)
+        res_id = ps[ps.find('res_id')+9:].split(',')[0]
         try:
+            if(limit ==0):
+                limit = 1
             api = "https://www.zomato.com/webroutes/reviews/loadMore?res_id={0}&limit={1}".format(
                 res_id, limit)
             driver.get(api)
         except Exception as e:
-            print(e)
+            # print(e)
+            pass
 
-        json_response = WebDriverWait(driver, 20).until(
+        json_response = WebDriverWait(driver, 30).until(
             EC.presence_of_element_located((By.XPATH, '/html/body/pre'))).text
 
         data = json.loads(json_response)
@@ -269,19 +271,20 @@ def get_all_review(driver, limit):
             pass
 
     except Exception as e:
-        print(e)
+        # print(e)
+        pass
     finally:
-        return reviews,total_reviews
+        return reviews, total_reviews
 
 
-def data_write(data,username,start,end):
+def data_write(data, username, start, end):
     try:
         json_data = json.dumps(data, ensure_ascii=False)
-        f = open('{0}_data_{1}_{2}.json'.format(username,start,end), 'w')
+        f = open('{0}_data_{1}_{2}.json'.format(username, start, end), 'w')
         f.write(json_data)
         f.close()
     except Exception as e:
-        print(e)
+        # print(e)
         pass
 
 
@@ -290,19 +293,23 @@ def main():
     try:
         urls = fetch_all_urls(filename=fName)
     except Exception as e:
-        print(e)
-    path = os.path.abspath("../../driver/chromedriver")
-    #define some limit if reviwes count not available
+        # print(e)
+        pass
+    path = os.path.abspath("../../driver/chromedriver83")
+    # define some limit if reviwes count not available
     limit = 100000
-    print('Starting to scrap zomato info at - {0}\n'.format(datetime.datetime.now()))
+    print(
+        'Starting to scrap zomato info at - {0}\n'.format(datetime.datetime.now()))
     print('Available range of urls is from : 0 to {0}\n'.format(len(urls)))
 
-    username = input('Please input your name : this is just for file tracking :  ')
+    username = input(
+        'Please input your name : this is just for file tracking :  ')
     start = int(input('Enter starting index : '))
     end = int(input('Enter ending index : '))
     data = fetch_zomato_info(urls[start:end], path, limit)
     print('scraping process Ended {0}'.format(datetime.datetime.now()))
-    data_write(data,username,start,end)
+    
+    data_write(data, username, start, end)
 
 
 if __name__ == '__main__':

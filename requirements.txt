@@ -3,3 +3,5 @@
 tqdm
 selenium
 beautifulsoup4
+
+# make sure you have the correct chrome browser version as of driver 83.x.x
